@@ -1,0 +1,10 @@
+flask
+flask_cors
+flask_jwt_extended
+diffusers
+transformers
+torch
+Pillow
+moviepy
+scikit-image
+bcrypt
