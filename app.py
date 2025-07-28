@@ -48,9 +48,13 @@ def register():
     password = data.get('password')
     if not username or not password:
         return jsonify({"error": "Логін і пароль обов’язкові"}), 400
+    # Завантажуємо існуючих користувачів із JSON
+    users = load_users()
     if username in users:
         return jsonify({"error": "Користувач вже існує"}), 400
+    # Додаємо нового користувача
     users[username] = generate_password_hash(password)
+    save_users(users)
     return jsonify({"message": "Користувача успішно створено"}), 201
 
 @app.route('/login', methods=['POST'])
@@ -58,9 +62,11 @@ def login():
     data = request.get_json(force=True)
     username = data.get('username')
     password = data.get('password')
+    # Завантажуємо користувачів з файлу
+    users = load_users()
     if username not in users:
         return jsonify({"error": "Невірний логін чи пароль"}), 401
-    # Перевіряємо хеш
+    # Перевіряємо хеш пароля
     if not check_password_hash(users[username], password):
         return jsonify({"error": "Невірний логін чи пароль"}), 401
     # Зберігаємо user у сесії
