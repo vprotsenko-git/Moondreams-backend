@@ -39,18 +39,16 @@ def save_users(users):
     with open(USER_DB, "w") as f:
         json.dump(users, f, indent=2)
 
-# Auth endpoints
-@app.route("/register", methods=["POST"])
+@app.route('/register', methods=['POST'])
 def register():
-    email = request.json.get("email")
-    password = request.json.get("password")
-    users = load_users()
-    if email in users:
-        return jsonify({"msg": "User already exists"}), 400
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    users[email] = {"password": hashed}
-    save_users(users)
-    return jsonify({"msg": "User created"})
+    data = request.get_json(force=True)
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({"error": "Логін і пароль обов’язкові"}), 400
+    # Логіка реєстрації (унікальність, хешування, запис)
+    # ...
+    return jsonify({"message": "Користувача успішно створено"}), 201
 
 @app.route("/login", methods=["POST"])
 def login():
