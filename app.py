@@ -3,6 +3,7 @@ import uuid
 import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     JWTManager, create_access_token,
     jwt_required, get_jwt_identity
@@ -16,6 +17,7 @@ import bcrypt
 # Init
 app = Flask(__name__)
 CORS(app)
+app.secret_key = "gH7kLm9Pq2Rz5SvT"
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'super-secret')
 jwt = JWTManager(app)
@@ -46,21 +48,24 @@ def register():
     password = data.get('password')
     if not username or not password:
         return jsonify({"error": "Логін і пароль обов’язкові"}), 400
-    # Логіка реєстрації (унікальність, хешування, запис)
-    # ...
+    if username in users:
+        return jsonify({"error": "Користувач вже існує"}), 400
+    users[username] = generate_password_hash(password)
     return jsonify({"message": "Користувача успішно створено"}), 201
 
-@app.route("/login", methods=["POST"])
+@app.route('/login', methods=['POST'])
 def login():
-    email = request.json.get("email")
-    password = request.json.get("password")
-    users = load_users()
-    if email not in users:
-        return jsonify({"msg": "Invalid email"}), 401
-    if not bcrypt.checkpw(password.encode(), users[email]["password"].encode()):
-        return jsonify({"msg": "Invalid password"}), 401
-    token = create_access_token(identity=email)
-    return jsonify({"access_token": token})
+    data = request.get_json(force=True)
+    username = data.get('username')
+    password = data.get('password')
+    if username not in users:
+        return jsonify({"error": "Невірний логін чи пароль"}), 401
+    # Перевіряємо хеш
+    if not check_password_hash(users[username], password):
+        return jsonify({"error": "Невірний логін чи пароль"}), 401
+    # Зберігаємо user у сесії
+    session['user'] = username
+    return jsonify({"message": "Успішний логін"}), 200
 
 # Text to Image
 @app.route("/text2img", methods=["POST"])
