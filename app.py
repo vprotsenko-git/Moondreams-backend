@@ -8,7 +8,7 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity
 )
 from diffusers import StableDiffusionPipeline
-from moviepy.editor import ImageSequenceClip
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from PIL import Image
 import torch
 import bcrypt
