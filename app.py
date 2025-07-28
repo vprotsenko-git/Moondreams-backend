@@ -72,6 +72,10 @@ def login():
     session['user'] = username
     return jsonify({"message": "Успішний логін"}), 200
 
+@app.route('/models/<path:filename>')
+def serve_model_file(filename):
+    return send_from_directory('models', filename)
+
 # Text to Image
 @app.route("/text2img", methods=["POST"])
 @jwt_required()
