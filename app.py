@@ -78,7 +78,6 @@ def serve_model_file(filename):
 
 # Text to Image
 @app.route("/text2img", methods=["POST"])
-@jwt_required()
 def text2img():
     user = get_jwt_identity()
     prompt = request.json.get("prompt")
@@ -90,7 +89,6 @@ def text2img():
 
 # Image to Video
 @app.route("/img2video", methods=["POST"])
-@jwt_required()
 def img2video():
     user = get_jwt_identity()
     frames = request.json.get("frames", [])
@@ -102,7 +100,6 @@ def img2video():
 
 # Upscale
 @app.route("/upscale", methods=["POST"])
-@jwt_required()
 def upscale():
     user = get_jwt_identity()
     image_fname = request.json.get("image")
@@ -115,7 +112,6 @@ def upscale():
 
 # Train placeholder
 @app.route("/train-model", methods=["POST"])
-@jwt_required()
 def train_model():
     user = get_jwt_identity()
     return jsonify({"user": user, "status": "training started (placeholder)"}), 202
