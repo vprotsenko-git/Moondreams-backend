@@ -15,7 +15,13 @@ import torch
 import bcrypt
 
 # Init
-CORS(app := Flask(__name__))
+app = Flask(__name__)
+# Дозволяємо CORS із авторизаційним заголовком
+CORS(app,
+     resources={r"/*": {"origins": "*"}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"]
+)
 app.secret_key = "gH7kLm9Pq2Rz5SvT"
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'super-secret')
