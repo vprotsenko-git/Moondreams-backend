@@ -70,7 +70,8 @@ def login():
         return jsonify({"error": "Невірний логін чи пароль"}), 401
     # Зберігаємо user у сесії
     session['user'] = username
-    return jsonify({"message": "Успішний логін"}), 200
+    access_token = create_access_token(identity=username)
+    return jsonify({"access_token": access_token, "message": "Успішний логін"}), 200
 
 @app.route('/models/<path:filename>')
 def serve_model_file(filename):
