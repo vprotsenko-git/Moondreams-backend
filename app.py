@@ -80,6 +80,7 @@ def serve_model_file(filename):
 @app.route("/text2img", methods=["POST"])
 def text2img():
     prompt = request.json.get("prompt")
+    user = get_jwt_identity()
     image = pipe(prompt).images[0]
     fname = f"{uuid.uuid4()}.png"
     path = os.path.join(SAVE_DIR, fname)
@@ -90,6 +91,7 @@ def text2img():
 @app.route("/img2video", methods=["POST"])
 def img2video():
     frames = request.json.get("frames", [])
+    user = get_jwt_identity()
     clip = ImageSequenceClip([os.path.join(SAVE_DIR, f) for f in frames], fps=5)
     vid_name = f"{uuid.uuid4()}.mp4"
     vid_path = os.path.join(SAVE_DIR, vid_name)
@@ -100,6 +102,7 @@ def img2video():
 @app.route("/upscale", methods=["POST"])
 def upscale():
     image_fname = request.json.get("image")
+    user = get_jwt_identity()
     img = Image.open(os.path.join(SAVE_DIR, image_fname))
     new = img.resize((img.width * 2, img.height * 2), resample=Image.LANCZOS)
     out_name = f"upscaled-{image_fname}"
