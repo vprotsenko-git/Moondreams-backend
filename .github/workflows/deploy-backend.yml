@@ -9,15 +9,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH and deploy backend
+      - name: Deploy to GCP VM via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.PORT }}       # за замовчуванням 22
+          port: ${{ secrets.PORT }}      # зазвичай 22
           script: |
-            cd /home/${{ secrets.USERNAME }}/Moondreams-backend
-            git pull
-            docker compose down
+            # Переходимо в домашню папку
+            cd /home/${{ secrets.USERNAME }}
+
+            # Якщо папки немає — клонюємо репо, інакше оновлюємо
+            if [ ! -d "Moondreams-backend" ]; then
+              git clone https://github.com/vprotsenko-git/Moondreams-backend.git
+            fi
+
+            # Зайшли в папку (тепер гарантовано існує)
+            cd Moondreams-backend
+
+            # Переконаємось, що це git-репо й оновлюємо
+            git fetch --all
+            git reset --hard origin/main
+
+            # Перевіряємо наявність docker-compose, якщо нема — ставимо плагін
+            if ! docker compose version >/dev/null 2>&1; then
+              mkdir -p ~/.docker/cli-plugins
+              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+                -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+            fi
+
+            # Перезапускаємо бекенд
+            docker compose down || true
             docker compose up -d --build
