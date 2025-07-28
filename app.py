@@ -1,7 +1,7 @@
 import os
 import uuid
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
@@ -15,8 +15,7 @@ import torch
 import bcrypt
 
 # Init
-app = Flask(__name__)
-CORS(app)
+CORS(app := Flask(__name__))
 app.secret_key = "gH7kLm9Pq2Rz5SvT"
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'super-secret')
