@@ -79,6 +79,7 @@ def serve_model_file(filename):
 
 # Text to Image
 @app.route("/text2img", methods=["POST"])
+@jwt_required()
 def text2img():
     prompt = request.json.get("prompt")
     user = get_jwt_identity()
@@ -90,6 +91,7 @@ def text2img():
 
 # Image to Video
 @app.route("/img2video", methods=["POST"])
+@jwt_required()
 def img2video():
     frames = request.json.get("frames", [])
     user = get_jwt_identity()
@@ -101,6 +103,7 @@ def img2video():
 
 # Upscale
 @app.route("/upscale", methods=["POST"])
+@jwt_required()
 def upscale():
     image_fname = request.json.get("image")
     user = get_jwt_identity()
