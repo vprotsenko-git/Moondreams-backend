@@ -1,31 +1,17 @@
 import os
 import uuid
 import json
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import (
-    JWTManager, create_access_token,
-    jwt_required, get_jwt_identity
-)
 from diffusers import StableDiffusionPipeline
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from PIL import Image
 import torch
-import bcrypt
 
 # Init
-app = Flask(__name__)
-# Дозволяємо CORS із авторизаційним заголовком
-CORS(app,
-     resources={r"/*": {"origins": "*"}},
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization"]
-)
+CORS(app := Flask(__name__))
 app.secret_key = "gH7kLm9Pq2Rz5SvT"
-
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'super-secret')
-jwt = JWTManager(app)
 
 SAVE_DIR = "/app/models"
 USER_DB = "/app/users.json"
@@ -35,95 +21,44 @@ if not os.path.exists(USER_DB):
         json.dump({}, f)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5").to(device)
+pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16)
+pipe = pipe.to(device)
 
-# Helpers
-def load_users():
-    with open(USER_DB) as f:
-        return json.load(f)
 
-def save_users(users):
-    with open(USER_DB, "w") as f:
-        json.dump(users, f, indent=2)
-
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.get_json(force=True)
-    username = data.get('username')
-    password = data.get('password')
-    if not username or not password:
-        return jsonify({"error": "Логін і пароль обов’язкові"}), 400
-    # Завантажуємо існуючих користувачів із JSON
-    users = load_users()
-    if username in users:
-        return jsonify({"error": "Користувач вже існує"}), 400
-    # Додаємо нового користувача
-    users[username] = generate_password_hash(password)
-    save_users(users)
-    return jsonify({"message": "Користувача успішно створено"}), 201
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json(force=True)
-    username = data.get('username')
-    password = data.get('password')
-    # Завантажуємо користувачів з файлу
-    users = load_users()
-    if username not in users:
-        return jsonify({"error": "Невірний логін чи пароль"}), 401
-    # Перевіряємо хеш пароля
-    if not check_password_hash(users[username], password):
-        return jsonify({"error": "Невірний логін чи пароль"}), 401
-    # Зберігаємо user у сесії
-    session['user'] = username
-    access_token = create_access_token(identity=username)
-    return jsonify({"access_token": access_token, "message": "Успішний логін"}), 200
-
-@app.route('/models/<path:filename>')
-def serve_model_file(filename):
-    return send_from_directory('models', filename)
-
-# Text to Image
 @app.route("/text2img", methods=["POST"])
-@jwt_required()
 def text2img():
-    prompt = request.json.get("prompt")
-    user = get_jwt_identity()
-    image = pipe(prompt).images[0]
-    fname = f"{uuid.uuid4()}.png"
-    path = os.path.join(SAVE_DIR, fname)
-    image.save(path)
-    return jsonify({"user": user, "output": fname})
+    prompt = request.json.get("prompt", "")
+    if not prompt:
+        return jsonify({"error": "Missing prompt"}), 400
 
-# Image to Video
+    image = pipe(prompt).images[0]
+    filename = f"{uuid.uuid4().hex}.png"
+    output_path = os.path.join(SAVE_DIR, filename)
+    image.save(output_path)
+
+    return jsonify({"output": filename})
+
+
 @app.route("/img2video", methods=["POST"])
-@jwt_required()
 def img2video():
     frames = request.json.get("frames", [])
-    user = get_jwt_identity()
-    clip = ImageSequenceClip([os.path.join(SAVE_DIR, f) for f in frames], fps=5)
-    vid_name = f"{uuid.uuid4()}.mp4"
-    vid_path = os.path.join(SAVE_DIR, vid_name)
-    clip.write_videofile(vid_path, codec="libx264")
-    return jsonify({"user": user, "output": vid_name})
+    if not isinstance(frames, list) or not frames:
+        return jsonify({"error": "Missing frames"}), 400
 
-# Upscale
-@app.route("/upscale", methods=["POST"])
-@jwt_required()
-def upscale():
-    image_fname = request.json.get("image")
-    user = get_jwt_identity()
-    img = Image.open(os.path.join(SAVE_DIR, image_fname))
-    new = img.resize((img.width * 2, img.height * 2), resample=Image.LANCZOS)
-    out_name = f"upscaled-{image_fname}"
-    out_path = os.path.join(SAVE_DIR, out_name)
-    new.save(out_path)
-    return jsonify({"user": user, "output": out_name})
+    paths = [os.path.join(SAVE_DIR, f) for f in frames if f.endswith(".png")]
+    images = [Image.open(p) for p in paths]
+    clip = ImageSequenceClip([i for i in images], fps=1)
+    filename = f"{uuid.uuid4().hex}.mp4"
+    output_path = os.path.join(SAVE_DIR, filename)
+    clip.write_videofile(output_path, codec="libx264")
 
-# Train placeholder
-@app.route("/train-model", methods=["POST"])
-def train_model():
-    return jsonify({"user": user, "status": "training started (placeholder)"}), 202
+    return jsonify({"output": filename})
+
+
+@app.route("/models/<path:filename>")
+def serve_file(filename):
+    return app.send_from_directory(SAVE_DIR, filename)
+
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000)
