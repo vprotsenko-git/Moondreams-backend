@@ -11,3 +11,7 @@ services:
     volumes:
       - ./models:/app/models
     restart: unless-stopped
+
+    # Додаємо обмеження ресурсів
+    mem_limit: 4g     # максимум 4 ГБ RAM
+    cpus: 2.0          # максимум 2 CPU
